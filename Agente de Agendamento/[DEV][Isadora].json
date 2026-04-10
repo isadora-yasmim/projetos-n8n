@@ -1,0 +1,807 @@
+{
+  "name": "[DEV][Isadora]",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "chatIds": "5364296905"
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        -128
+      ],
+      "id": "f870ed61-c5f6-48e6-9a00-7efb596c8b53",
+      "name": "Telegram Trigger",
+      "webhookId": "9c6113c6-4532-47d7-9e9a-45a118fe9417",
+      "credentials": {
+        "telegramApi": {
+          "id": "H1Y0uyXEYC6FwVrt",
+          "name": "Telegram Desafio Isadora"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Desculpe, não consigo processar a sua mensagem, por favor me mande apenas textos ou áudios",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        464
+      ],
+      "id": "7d80660a-63a7-41c4-a429-e74aeed9cece",
+      "name": "Send Mensagem Padrão",
+      "webhookId": "0c0abcad-38a3-4aa5-b29f-62f911299a8f",
+      "credentials": {
+        "telegramApi": {
+          "id": "H1Y0uyXEYC6FwVrt",
+          "name": "Telegram Desafio Isadora"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot8746005059:AAHswQozvSYEbDlfVqvpJeP6nXUlV2goGa0/getFile",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=file_id",
+              "value": "={{ $json.message.voice.file_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        480
+      ],
+      "id": "e7d4e5c6-9a9f-4fd5-91f9-81f5e1464176",
+      "name": "Get Arquivo de Áudio"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot8746005059:AAHswQozvSYEbDlfVqvpJeP6nXUlV2goGa0/{{ $('Get Arquivo de Áudio').item.json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        480
+      ],
+      "id": "91309e51-19f9-441c-854c-fc160ed05ae0",
+      "name": "Download Áudio"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {
+          "language": "pt"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        480
+      ],
+      "id": "71866982-9292-4891-902b-aad7d68b752e",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "uK0UykUEgoNyJfbI",
+          "name": "OpenAI - SOBREVIDAS "
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ $json.mensagem_usuario }}",
+        "options": {
+          "systemMessage": "# Identidade\nVocê é o assistente virtual de agendamento de consultas do **Sobrevidas**. Sua única função é agendar consultas para pacientes cadastrados.\n\n> Se o paciente perguntar algo fora do escopo de agendamento, redirecione gentilmente para o tema.\n\n---\n\n# Ferramentas disponíveis\n| Tool | Quando usar |\n|---|---|\n| `buscar_paciente` | Logo após receber o nome completo |\n| `busca_agendamento` | Antes de buscar horários — verificar se já existe agendamento |\n| `buscar_horarios` | Após confirmar que pode prosseguir com novo agendamento |\n| `salvar_agendamento` | Somente após confirmação explícita do paciente |\n\n---\n\n# Fluxo obrigatório\n1. **Apresentação** — Se apresente e peça o nome completo. Não execute nenhuma outra ação antes disso.\n2. **Buscar paciente** — Use `buscar_paciente` com o nome recebido. Sem ID válido, não prossiga.\n3. **Verificar agendamento** — Use `busca_agendamento`. Se existir, informe os dados e pergunte se quer criar um novo.\n4. **Buscar horários** — Use `buscar_horarios`. O campo `range_horario` define o intervalo de funcionamento (formato `HH:MM-HH:MM`).\n5. **Sugerir horários** — Apresente **3 opções distribuídas** dentro do `range_horario`, a partir da **data atual** (`{{ $now }}`). Use os emojis 1️⃣, 2️⃣, 3️⃣.\n6. **Confirmar** — Antes de salvar, envie a confirmação e aguarde resposta explícita do paciente.\n7. **Salvar** — Use `salvar_agendamento`. O `horario_fim` = `horario_inicio` + 30 min.\n8. **Encerrar** — Envie os dados do agendamento e finalize cordialmente.\n\n> Se o paciente recusar os 3 horários, ofereça 3 novos dentro do mesmo `range_horario`, diferentes dos anteriores.\n\n---\n\n# Regras críticas\n- **NUNCA** confirme horário fora do `range_horario` retornado pela tool.\n- **NUNCA** invente dados de paciente, horário ou local — use apenas o retorno das tools.\n- **NUNCA** pule etapas do fluxo.\n- Sempre refira ao local usando **\"em\"** (nunca \"na\" ou \"no\").\n\n---\n\n# Formato de resposta\nResponda **sempre em JSON válido**, sem texto fora do JSON. Divida em mensagens curtas.\n\n```json\n{\n  \"mensagens\": [\n    { \"mensagem\": \"texto aqui\" }\n  ]\n}\n```\n\nQuando apresentar local + data + horários, consolide em **uma única mensagem**:\n\n```\n🏥 Local: [nome_estabelecimento]\n\n1️⃣ DD/MM/AAAA – HH:MM\n2️⃣ DD/MM/AAAA – HH:MM\n3️⃣ DD/MM/AAAA – HH:MM\n\nQual horário é melhor para você?\n```"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        -240
+      ],
+      "id": "70de100d-85a6-4f30-9950-c6274769b787",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const output = $input.item.json.output;\n  const limpo = output.replace(/```json|```/g, '').trim();\n  const parsed = JSON.parse(limpo);\n  return [{ json: { mensagens: parsed.mensagens } }];\n} catch (e) {\n  return [{ json: { mensagens: [{ mensagem: $input.item.json.output }] } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        -192
+      ],
+      "id": "f45f1e3e-8b47-4ea8-ab66-a4d0abe3da2c",
+      "name": "Mensagens do Agente"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.mensagem }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3056,
+        -208
+      ],
+      "id": "f266087c-68b4-442e-811f-6abe990614fe",
+      "name": "Envia Mensagens",
+      "webhookId": "1708a5f9-3dbb-41e6-8e10-6a268cd39dba",
+      "credentials": {
+        "telegramApi": {
+          "id": "H1Y0uyXEYC6FwVrt",
+          "name": "Telegram Desafio Isadora"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use essa tool para buscar o paciente no banco de dados pelo nome completo informado. Retorna o ID e dados do paciente.",
+        "operation": "executeQuery",
+        "query": "SELECT id, nome_paciente\nFROM paciente_dados_sensiveis\nWHERE nome_paciente ILIKE '%' || '{{ $fromAI(\"nome_paciente\", \"nome completo informado pelo paciente\") }}' || '%'\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1488,
+        -48
+      ],
+      "id": "2dae13a8-83ab-4921-a1f2-f3968e201bc3",
+      "name": "buscar_paciente",
+      "credentials": {
+        "postgres": {
+          "id": "90A40zTW7hVq7IXw",
+          "name": "Postgres account estudos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use essa tool para buscar o estabelecimento e os horários disponíveis vinculados ao perfil do paciente. Requer o id_paciente retornado pela tool buscar_paciente.",
+        "operation": "executeQuery",
+        "query": "SELECT \n  e.id AS id_estabelecimento,\n  e.nome_estabelecimento,\n  e.range_horario\nFROM estabelecimento e\nWHERE e.id_paciente = {{ $fromAI(\"id_paciente\", \"ID do paciente retornado pela tool buscar_paciente\") }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1648,
+        -48
+      ],
+      "id": "dd7dcf78-5855-47cf-8857-08ac673e11b0",
+      "name": "buscar_horarios",
+      "credentials": {
+        "postgres": {
+          "id": "90A40zTW7hVq7IXw",
+          "name": "Postgres account estudos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        -48
+      ],
+      "id": "aa4e9fe5-1de0-4a72-b82c-3f57d2130ea6",
+      "name": "Memoria"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use essa tool para salvar o agendamento após confirmação explícita do paciente. \nO horario_inicio DEVE estar dentro do range_horario retornado por buscar_horarios.\nRequer: id_paciente, id_estabelecimento, horario_inicio (HH:MM:SS, dentro do range), horario_fim (horario_inicio + 30 min).",
+        "operation": "executeQuery",
+        "query": "INSERT INTO agendamento_criado (\n  id_paciente,\n  id_estabelecimento,\n  horario_inicio,\n  horario_fim,\n  created_at\n)\nVALUES (\n  {{ $fromAI(\"id_paciente\", \"ID do paciente\") }},\n  {{ $fromAI(\"id_estabelecimento\", \"ID do estabelecimento retornado pela tool buscar_horarios\") }},\n  '{{ $fromAI(\"horario_inicio\", \"horário de início escolhido pelo paciente no formato HH:MM:SS\") }}',\n  '{{ $fromAI(\"horario_fim\", \"horário de fim calculado a partir do range_horario no formato HH:MM:SS\") }}',\n  NOW()\n)\nRETURNING id, id_paciente, id_estabelecimento, horario_inicio, horario_fim;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1808,
+        -48
+      ],
+      "id": "a974adb0-18f0-496d-a726-782bf98d5ff5",
+      "name": "salvar_agendamento",
+      "credentials": {
+        "postgres": {
+          "id": "90A40zTW7hVq7IXw",
+          "name": "Postgres account estudos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "mensagens",
+        "options": {}
+      },
+      "id": "559b4425-2c00-454a-b8e5-8f610e92fcda",
+      "name": "Separa Mensagens",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Ops! Ocorreu um erro inesperado. Por favor, tente novamente em instantes.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3312,
+        -192
+      ],
+      "id": "441b47ca-2ded-4211-8210-754ca11adcc5",
+      "name": "Mensagem erro",
+      "webhookId": "8e51c93f-69fd-460b-9765-834a42dc186d",
+      "credentials": {
+        "telegramApi": {
+          "id": "H1Y0uyXEYC6FwVrt",
+          "name": "Telegram Desafio Isadora"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        -208
+      ],
+      "id": "d943c678-644f-4885-832a-1b64a62c3634",
+      "name": "Delay 1s",
+      "webhookId": "3049113e-fa7d-431f-b84c-f7538c9e1f59"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini-2026-03-17",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini-2026-03-17"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        -64
+      ],
+      "id": "da8f065f-0823-46c6-8bf3-8b95952d21a1",
+      "name": "Modelo GPT",
+      "credentials": {
+        "openAiApi": {
+          "id": "uK0UykUEgoNyJfbI",
+          "name": "OpenAI - SOBREVIDAS "
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "fe861530-f8cb-4921-813d-ed44eef74cdd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d6e09681-335b-43bd-9556-c9495e97103c",
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c56b09e6-7463-41da-95df-8f6a5cb7de20",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Outros"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 2
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        -144
+      ],
+      "id": "64fa2e36-18ec-4a20-b5e8-5ae090f15f54",
+      "name": "Identifica o Tipo da Mensagem"
+    },
+    {
+      "parameters": {
+        "content": "## 🎙️ Processamento de Áudio\n\n🔹 **Get Arquivo de Áudio**: Troca o file_id pelo caminho real  do arquivo na API do Telegram.\n\n🔹 **Download Áudio**: Baixa o arquivo de áudio em formato binário.\n\n🔹 **Transcribe a recording**: Transcreve o áudio para texto usando o Whisper da OpenAI (idioma: pt).",
+        "height": 352,
+        "width": 688,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -48,
+        288
+      ],
+      "typeVersion": 1,
+      "id": "ff701b9a-d0a9-473c-a352-338f1032a4dc",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 📥 Entrada da Mensagem\n\n🔹 **Telegram Trigger**: Escuta mensagens recebidas no bot e \ndispara o fluxo.\n\n🔹 **Switch**: Classifica o tipo de mensagem recebida:\n- _Texto_ → segue para Edit Texto\n- _Áudio_ → segue para processamento de áudio\n- _Outros_ → resposta padrão",
+        "height": 416,
+        "width": 512,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -656,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "ff580015-dfef-48ad-9869-07f66d4e4ab7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 🚫 Formato de Mensagem Não Suportado\n\n🔹 **Send Mensagem Padrão**: Informa ao paciente que o tipo de mensagem enviado não é suportado (imagem, vídeo, sticker, etc.) e solicita texto ou áudio.",
+        "height": 336,
+        "width": 512,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -656,
+        288
+      ],
+      "typeVersion": 1,
+      "id": "27134d31-b52b-46ad-8940-7b82ac2c583c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 🔄 Padronização dos Dados\n\n🔹  Padroniza a mensagem de texto ou transcrição do áudio em: mensagem_usuario, session_id e origem.\n\n",
+        "height": 304,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "0ce40a10-36c2-437d-b185-9ad17aa9228c",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## 🤖 Agente de Agendamento\n\n🔹 **OpenAI (Modelo GPT)**: Modelo de linguagem que alimenta o agente.\n\n🔹 **Memoria**: Armazena o histórico da conversa por session_id (janela de 6 mensagens).\n\n🔹 **AI Agent**: Orquestra o atendimento seguindo o system prompt e aciona as tools.\n\n🔹 **buscar_paciente**: Localiza o paciente no banco pelo nome informado. Retorna o ID.\n\n🔹 **buscar_horarios**: Busca o estabelecimento e o range de horários vinculados ao paciente.\n\n🔹 **salvar_agendamento**: Insere o agendamento confirmado na tabela agendamento_criado.\n\n🔹 **buscar_agendamento**: Busca agendamentos vinculados ao paciente.",
+        "height": 688,
+        "width": 960,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1152,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "56fb06a4-9ac9-4695-ba7f-804be4f4f915",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## 📤 Envio das Respostas\n\n🔹 **Mensagens do Agente**: Parseia o JSON retornado pelo agente e extrai o array de mensagens.\n\n🔹 **Separa Mensagens (Split Out)**: Divide o array em itens individuais para envio sequencial.\n\n🔹 **Envia Mensagens**: Envia cada mensagem separadamente ao paciente via Telegram.\n\n🔹 **Mensagens erro**: Envia uma mensagem padrão em caso de erro para que o paciente não fique sem resposta",
+        "height": 544,
+        "width": 1120,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2336,
+        -496
+      ],
+      "typeVersion": 1,
+      "id": "266059de-9ae0-4fdf-8f9e-3366b52d7b30",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Execute a SQL query in Postgres",
+        "operation": "executeQuery",
+        "query": "SELECT \n  a.id,\n  a.horario_inicio,\n  a.horario_fim,\n  e.nome_estabelecimento\nFROM agendamento_criado a\nJOIN estabelecimento e ON e.id = a.id_estabelecimento\nWHERE e.id_paciente ={{ $fromAI(\"id_paciente\", \"ID do paciente retornado pela tool buscar_paciente\") }}\nORDER BY a.horario_inicio DESC\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1984,
+        -48
+      ],
+      "id": "63f35595-4e57-4329-89d6-4b9cb005efa4",
+      "name": "busca_agendamento",
+      "credentials": {
+        "postgres": {
+          "id": "90A40zTW7hVq7IXw",
+          "name": "Postgres account estudos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "559d44f2-e3ea-4f9b-9264-06f598eb5125",
+              "name": "mensagem_usuario",
+              "value": "=={{ $if($('Transcribe a recording').isExecuted, $('Transcribe a recording').item.json.text, $('Telegram Trigger').item.json.message.text) }}",
+              "type": "string"
+            },
+            {
+              "id": "79f0b0af-4ed9-424e-9e7d-20c539d408db",
+              "name": "session_id",
+              "value": "=={{ $('Telegram Trigger').item.json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "0512d317-8383-40a0-8df3-c0144a6a9f76",
+              "name": "origem",
+              "value": "=={{ $('Telegram Trigger').item.json.message.voice ? 'audio' : 'texto' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -224
+      ],
+      "id": "a186ef24-ea1e-4b1d-80d2-b5775a28990e",
+      "name": "Padronização dos dados"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Identifica o Tipo da Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Mensagem Padrão": {
+      "main": [
+        []
+      ]
+    },
+    "Get Arquivo de Áudio": {
+      "main": [
+        [
+          {
+            "node": "Download Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Áudio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Padronização dos dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagens do Agente": {
+      "main": [
+        [
+          {
+            "node": "Separa Mensagens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_paciente": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_horarios": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "salvar_agendamento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Mensagens do Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separa Mensagens": {
+      "main": [
+        [
+          {
+            "node": "Delay 1s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia Mensagens": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Mensagem erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delay 1s": {
+      "main": [
+        [
+          {
+            "node": "Envia Mensagens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo GPT": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identifica o Tipo da Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Padronização dos dados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Arquivo de Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Mensagem Padrão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "busca_agendamento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronização dos dados": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "abb78912-b35b-4276-9cd6-0735907ad24b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83272b9ebbaaa6b73e9e928b42627f53af4c940db2e699fea35b74995c5e3f29"
+  },
+  "id": "Pv9NTdUDtM59wYQMLYnK3",
+  "tags": []
+}

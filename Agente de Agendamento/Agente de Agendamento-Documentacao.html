@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente de Agendamento — Documentação do Workflow</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --accent: #4fffb0;
+    --accent2: #7b61ff;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --tag-bg: #1e2535;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Figtree', sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    padding: 60px 0 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79,255,176,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .badge {
+    display: inline-block;
+    background: rgba(79,255,176,0.1);
+    border: 1px solid rgba(79,255,176,0.3);
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  header h1 span { color: var(--accent); }
+  header p {
+    color: var(--muted);
+    font-size: 16px;
+    margin-top: 12px;
+    font-weight: 300;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .meta-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .meta-pill strong { color: var(--text); font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot.green { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot.purple { background: var(--accent2); }
+  .dot.yellow { background: var(--accent4); }
+
+  /* ─── LAYOUT ─── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+  section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 28px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ─── FLOW DIAGRAM ─── */
+  .flow-wrapper {
+    position: relative;
+  }
+  .flow-track {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    position: relative;
+  }
+  .flow-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 44px;
+    bottom: -20px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--border), transparent);
+  }
+  .step-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    position: relative;
+    z-index: 1;
+  }
+  .step-body {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .step-body:hover { border-color: rgba(79,255,176,0.3); }
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .step-desc { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .step-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    background: var(--tag-bg);
+    color: var(--accent2);
+    border: 1px solid rgba(123,97,255,0.2);
+  }
+  .step-tag.green { color: var(--accent); border-color: rgba(79,255,176,0.2); }
+  .step-tag.yellow { color: var(--accent4); border-color: rgba(255,217,61,0.2); }
+  .step-tag.red { color: var(--accent3); border-color: rgba(255,107,107,0.2); }
+
+  /* ─── BRANCHES ─── */
+  .branch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  @media (max-width: 700px) { .branch-grid { grid-template-columns: 1fr; } }
+  .branch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .branch-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .branch-card.texto::before { background: var(--accent); }
+  .branch-card.audio::before { background: var(--accent2); }
+  .branch-card.outros::before { background: var(--accent3); }
+  .branch-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .branch-card.texto .branch-name { color: var(--accent); }
+  .branch-card.audio .branch-name { color: var(--accent2); }
+  .branch-card.outros .branch-name { color: var(--accent3); }
+  .branch-steps { list-style: none; }
+  .branch-steps li {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .branch-steps li:last-child { border-bottom: none; }
+  .branch-steps li::before {
+    content: '→';
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  /* ─── NODE CARDS ─── */
+  .nodes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 16px;
+  }
+  .node-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .node-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(79,255,176,0.2);
+  }
+  .node-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .node-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+  .ni-trigger { background: rgba(79,255,176,0.12); }
+  .ni-switch  { background: rgba(255,217,61,0.12); }
+  .ni-set     { background: rgba(123,97,255,0.12); }
+  .ni-agent   { background: rgba(79,255,176,0.12); }
+  .ni-code    { background: rgba(123,97,255,0.12); }
+  .ni-db      { background: rgba(255,107,107,0.12); }
+  .ni-msg     { background: rgba(79,255,176,0.12); }
+  .ni-ai      { background: rgba(255,217,61,0.12); }
+  .ni-http    { background: rgba(255,107,107,0.12); }
+  .ni-mem     { background: rgba(123,97,255,0.12); }
+  .node-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .node-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .node-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .node-detail {
+    margin-top: 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    line-height: 1.6;
+    word-break: break-all;
+  }
+  .node-detail .key { color: var(--muted); }
+
+  /* ─── TOOLS TABLE ─── */
+  .tools-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tools-table th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tools-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13.5px;
+    vertical-align: top;
+  }
+  .tools-table tr:last-child td { border-bottom: none; }
+  .tools-table tr:hover td { background: var(--surface2); }
+  .tool-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .sql-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: #a8b8d8;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 10px;
+  }
+  .kw { color: #7b61ff; }
+  .fn { color: #4fffb0; }
+  .str { color: #ffd93d; }
+  .cmt { color: #4a5568; font-style: italic; }
+
+  /* ─── PROMPT BLOCK ─── */
+  .prompt-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .prompt-header {
+    background: var(--surface2);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .prompt-header span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .prompt-header strong { color: var(--accent); }
+  .prompt-content {
+    padding: 24px;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: #c4cfe8;
+  }
+  .prompt-content h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 20px 0 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .prompt-content h2:first-child { margin-top: 0; }
+  .prompt-content ul, .prompt-content ol {
+    padding-left: 20px;
+    color: var(--muted);
+  }
+  .prompt-content li { margin: 4px 0; }
+  .prompt-content code {
+    background: var(--tag-bg);
+    color: var(--accent2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .prompt-content strong { color: var(--text); }
+  .prompt-content blockquote {
+    border-left: 3px solid var(--accent2);
+    padding-left: 14px;
+    color: var(--muted);
+    font-style: italic;
+    margin: 12px 0;
+  }
+  .prompt-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .prompt-content table th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .prompt-content table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .prompt-content .critical {
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #ffaaaa;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .prompt-content .critical::before { content: '⚠ '; }
+
+  /* ─── VAR DISPLAY ─── */
+  .var-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .var-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .var-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .var-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 6px 10px;
+    border-radius: 6px;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .var-desc { font-size: 12px; color: #4a5568; margin-top: 6px; }
+
+  /* ─── MISC ─── */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+  .callout {
+    background: rgba(79,255,176,0.05);
+    border: 1px solid rgba(79,255,176,0.2);
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout strong { color: var(--accent); }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 40px;
+  }
+  .toc-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .toc-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+  .toc-list a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .toc-list a:hover {
+    color: var(--accent);
+    border-color: rgba(79,255,176,0.3);
+  }
+
+  footer {
+    text-align: center;
+    padding: 40px 28px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+  footer span { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="badge">n8n workflow · v8 · Sobrevidas</div>
+    <h1>Agente de Agendamento<span>.</span></h1>
+    <p>Assistente virtual de agendamento de consultas médicas via Telegram</p>
+    <div class="meta-row">
+      <div class="meta-pill"><div class="dot green"></div><strong>19 nós</strong> no workflow</div>
+      <div class="meta-pill"><div class="dot purple"></div><strong>GPT</strong> como modelo base</div>
+      <div class="meta-pill"><div class="dot yellow"></div><strong>PostgreSQL</strong> como banco de dados</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div style="padding-top: 48px;">
+    <div class="toc">
+      <div class="toc-title">Índice</div>
+      <ul class="toc-list">
+        <li><a href="#visao-geral">Visão Geral</a></li>
+        <li><a href="#entrada">Entrada de Mensagens</a></li>
+        <li><a href="#branches">Branches de Processamento</a></li>
+        <li><a href="#padronizacao">Padronização dos Dados</a></li>
+        <li><a href="#agente">AI Agent</a></li>
+        <li><a href="#tools">Tools (PostgreSQL)</a></li>
+        <li><a href="#saida">Saída para o Telegram</a></li>
+        <li><a href="#variaveis">Variáveis</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- VISÃO GERAL -->
+  <section id="visao-geral">
+    <div class="section-label">01 · overview</div>
+    <div class="section-title">Visão Geral do Fluxo</div>
+
+    <div class="callout">
+      <div class="callout-icon">💡</div>
+      <div>O workflow recebe mensagens do Telegram, identifica se são <strong>texto</strong>, <strong>áudio</strong> ou <strong>outro tipo</strong>, processa com um AI Agent conectado ao banco de dados e retorna as respostas ao paciente.</div>
+    </div>
+
+    <div class="flow-track">
+
+      <div class="flow-step">
+        <div class="step-icon">📨</div>
+        <div class="step-body">
+          <div class="step-title">Telegram Trigger</div>
+          <div class="step-desc">Escuta mensagens recebidas no chat ID configurado. Dispara o workflow a cada nova mensagem.</div>
+          <span class="step-tag green">trigger</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-icon">🔀</div>
+        <div class="step-body">
+          <div class="step-title">Identifica o Tipo da Mensagem</div>
+          <div class="step-desc">Switch com 3 saídas: <strong>Texto</strong> (message.text existe), <strong>Áudio</strong> (message.voice existe), <strong>Outros</strong> (fallback para qualquer outro tipo).</div>
+          <span class="step-tag yellow">switch</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-icon">⚙️</div>
+        <div class="step-body">
+          <div class="step-title">Processamento por Branch</div>
+          <div class="step-desc">Cada tipo de mensagem segue um caminho diferente antes de convergir na padronização.</div>
+          <span class="step-tag">branches</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-icon">📦</div>
+        <div class="step-body">
+          <div class="step-title">Padronização dos Dados</div>
+          <div class="step-desc">Nó Set único que normaliza as variáveis <code>mensagem_usuario</code>, <code>session_id</code> e <code>origem</code> independente do tipo de entrada.</div>
+          <span class="step-tag">set</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-icon">🤖</div>
+        <div class="step-body">
+          <div class="step-title">AI Agent</div>
+          <div class="step-desc">Recebe a mensagem padronizada, consulta as tools do PostgreSQL e responde em JSON com as mensagens formatadas.</div>
+          <span class="step-tag green">agent · gpt</span>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-icon">✉️</div>
+        <div class="step-body">
+          <div class="step-title">Entrega no Telegram</div>
+          <div class="step-desc">As mensagens são separadas, enviadas com delay de 1s entre cada uma para simular digitação natural.</div>
+          <span class="step-tag">telegram · split · delay</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ENTRADA -->
+  <section id="entrada">
+    <div class="section-label">02 · trigger</div>
+    <div class="section-title">Entrada de Mensagens</div>
+    <div class="nodes-grid">
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-trigger">📨</div>
+          <div>
+            <div class="node-name">Telegram Trigger</div>
+            <div class="node-type">n8n-nodes-base.telegramTrigger</div>
+          </div>
+        </div>
+        <div class="node-desc">Ponto de entrada do workflow. Escuta apenas o evento <strong>message</strong>.</div>
+        <div class="node-detail">
+          <span class="key">updates:</span> message<br>
+          <span class="key">chatId:</span> 5364296905
+        </div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-switch">🔀</div>
+          <div>
+            <div class="node-name">Identifica o Tipo da Mensagem</div>
+            <div class="node-type">n8n-nodes-base.switch</div>
+          </div>
+        </div>
+        <div class="node-desc">Roteia para 3 branches com base no conteúdo da mensagem recebida.</div>
+        <div class="node-detail">
+          <span class="key">saída 0 →</span> Texto<br>
+          <span class="key">saída 1 →</span> Áudio<br>
+          <span class="key">saída 2 →</span> Outros (fallback)
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- BRANCHES -->
+  <section id="branches">
+    <div class="section-label">03 · branches</div>
+    <div class="section-title">Processamento por Tipo de Mensagem</div>
+    <div class="branch-grid">
+
+      <div class="branch-card texto">
+        <div class="branch-name">📝 Texto</div>
+        <ul class="branch-steps">
+          <li>Identifica: <code>message.text</code> existe</li>
+          <li>Vai direto para <strong>Padronização dos dados</strong></li>
+          <li>Usa <code>message.text</code> como mensagem</li>
+        </ul>
+      </div>
+
+      <div class="branch-card audio">
+        <div class="branch-name">🎙️ Áudio</div>
+        <ul class="branch-steps">
+          <li>Identifica: <code>message.voice</code> existe</li>
+          <li><strong>Get Arquivo de Áudio</strong> — busca file_path via API do Telegram</li>
+          <li><strong>Download Áudio</strong> — baixa o arquivo binário</li>
+          <li><strong>Transcribe a recording</strong> — transcreve em PT-BR via OpenAI</li>
+          <li>Vai para <strong>Padronização dos dados</strong></li>
+        </ul>
+      </div>
+
+      <div class="branch-card outros">
+        <div class="branch-name">🚫 Outros</div>
+        <ul class="branch-steps">
+          <li>Fallback para tipos não suportados</li>
+          <li><strong>Send Mensagem Padrão</strong> — informa ao usuário que só aceita texto ou áudio</li>
+          <li>Fluxo encerrado — não chega ao agente</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 24px;" class="nodes-grid">
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-http">🌐</div>
+          <div>
+            <div class="node-name">Get Arquivo de Áudio</div>
+            <div class="node-type">httpRequest</div>
+          </div>
+        </div>
+        <div class="node-desc">Chama <code>getFile</code> na API do Telegram passando o <code>file_id</code> do áudio para obter o <code>file_path</code>.</div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-http">📥</div>
+          <div>
+            <div class="node-name">Download Áudio</div>
+            <div class="node-type">httpRequest</div>
+          </div>
+        </div>
+        <div class="node-desc">Baixa o arquivo de áudio como binário usando o <code>file_path</code> retornado pelo nó anterior. Response format: <strong>file</strong>.</div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-ai">🔊</div>
+          <div>
+            <div class="node-name">Transcribe a recording</div>
+            <div class="node-type">@n8n/n8n-nodes-langchain.openAi</div>
+          </div>
+        </div>
+        <div class="node-desc">Envia o áudio para a API de transcrição da OpenAI. Retorna <code>json.text</code> com o texto transcrito.</div>
+        <div class="node-detail">
+          <span class="key">resource:</span> audio<br>
+          <span class="key">operation:</span> transcribe<br>
+          <span class="key">language:</span> pt
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PADRONIZAÇÃO -->
+  <section id="padronizacao">
+    <div class="section-label">04 · data normalization</div>
+    <div class="section-title">Padronização dos Dados</div>
+
+    <div class="callout">
+      <div class="callout-icon">✅</div>
+      <div>Este nó unifica as duas origens (texto e áudio) em variáveis padronizadas. Usa <code>$if(...isExecuted)</code> para saber se veio de transcrição ou direto do Telegram — evitando erro de referência a nó não executado.</div>
+    </div>
+
+    <div class="var-grid">
+      <div class="var-card">
+        <div class="var-name">mensagem_usuario</div>
+        <div class="var-val">{{ $if($('Transcribe a recording').isExecuted,<br>&nbsp;&nbsp;$('Transcribe a recording').item.json.text,<br>&nbsp;&nbsp;$('Telegram Trigger').item.json.message.text) }}</div>
+        <div class="var-desc">Texto final da mensagem — seja digitada ou transcrita.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">session_id</div>
+        <div class="var-val">{{ $('Telegram Trigger').item.json.message.chat.id }}</div>
+        <div class="var-desc">Identificador único da conversa. Usado pela memória do agente.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">origem</div>
+        <div class="var-val">{{ $('Telegram Trigger').item.json.message.voice ? 'audio' : 'texto' }}</div>
+        <div class="var-desc">Indica se a mensagem veio de áudio ou texto.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AGENTE -->
+  <section id="agente">
+    <div class="section-label">05 · ai agent</div>
+    <div class="section-title">AI Agent</div>
+
+    <div class="nodes-grid" style="margin-bottom: 28px;">
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-agent">🤖</div>
+          <div>
+            <div class="node-name">AI Agent</div>
+            <div class="node-type">@n8n/n8n-nodes-langchain.agent</div>
+          </div>
+        </div>
+        <div class="node-desc">Recebe <code>mensagem_usuario</code>, consulta as tools e retorna sempre um JSON com a lista de <code>mensagens</code>.</div>
+        <div class="node-detail">
+          <span class="key">promptType:</span> define<br>
+          <span class="key">text:</span> {{ $json.mensagem_usuario }}
+        </div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-ai">⚡</div>
+          <div>
+            <div class="node-name">Modelo GPT</div>
+            <div class="node-type">lmChatOpenAi</div>
+          </div>
+        </div>
+        <div class="node-desc">Modelo de linguagem conectado ao agente.</div>
+        <div class="node-detail">
+          <span class="key">model:</span> gpt-5.4-mini-2026-03-17
+        </div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-mem">🧠</div>
+          <div>
+            <div class="node-name">Memória</div>
+            <div class="node-type">memoryBufferWindow</div>
+          </div>
+        </div>
+        <div class="node-desc">Mantém contexto das últimas 10 mensagens por sessão. Chave baseada no chat ID do Telegram.</div>
+        <div class="node-detail">
+          <span class="key">sessionKey:</span> {{ chat.id }}<br>
+          <span class="key">contextWindow:</span> 10 msgs
+        </div>
+      </div>
+
+      <div class="node-card">
+        <div class="node-header">
+          <div class="node-icon ni-code">📜</div>
+          <div>
+            <div class="node-name">Mensagens do Agente</div>
+            <div class="node-type">n8n-nodes-base.code</div>
+          </div>
+        </div>
+        <div class="node-desc">Faz o parse do JSON retornado pelo agente. Se falhar, encapsula o output bruto como mensagem única — garantindo robustez.</div>
+        <div class="node-detail">
+          <span class="key">parse:</span> output → mensagens[]<br>
+          <span class="key">fallback:</span> output bruto
+        </div>
+      </div>
+    </div>
+
+    <div class="prompt-block">
+      <div class="prompt-header">
+        <span>📋 </span>
+        <span><strong>System Prompt</strong> — Agente de Agendamento (Markdown)</span>
+      </div>
+      <div class="prompt-content">
+        <h2>🪪 Identidade</h2>
+        <p>Você é o assistente virtual de agendamento de consultas do <strong>Sobrevidas</strong>. Sua única função é agendar consultas para pacientes cadastrados.</p>
+        <blockquote>Se o paciente perguntar algo fora do escopo de agendamento, redirecione gentilmente para o tema.</blockquote>
+
+        <h2>🔧 Ferramentas disponíveis</h2>
+        <table>
+          <tr><th>Tool</th><th>Quando usar</th></tr>
+          <tr><td><code>buscar_paciente</code></td><td>Logo após receber o nome completo</td></tr>
+          <tr><td><code>busca_agendamento</code></td><td>Antes de buscar horários — verificar se já existe agendamento</td></tr>
+          <tr><td><code>buscar_horarios</code></td><td>Após confirmar que pode prosseguir com novo agendamento</td></tr>
+          <tr><td><code>salvar_agendamento</code></td><td>Somente após confirmação explícita do paciente</td></tr>
+        </table>
+
+        <h2>📋 Fluxo obrigatório</h2>
+        <ol>
+          <li><strong>Apresentação</strong> — Se apresente e peça o nome completo. Não execute nenhuma outra ação antes disso.</li>
+          <li><strong>Buscar paciente</strong> — Use <code>buscar_paciente</code> com o nome recebido. Sem ID válido, não prossiga.</li>
+          <li><strong>Verificar agendamento</strong> — Use <code>busca_agendamento</code>. Se existir, informe os dados e pergunte se quer criar um novo.</li>
+          <li><strong>Buscar horários</strong> — Use <code>buscar_horarios</code>. O campo <code>range_horario</code> define o intervalo (formato HH:MM-HH:MM).</li>
+          <li><strong>Sugerir horários</strong> — Apresente 3 opções distribuídas dentro do range, a partir da data atual. Use emojis 1️⃣ 2️⃣ 3️⃣.</li>
+          <li><strong>Confirmar</strong> — Antes de salvar, envie a confirmação e aguarde resposta explícita.</li>
+          <li><strong>Salvar</strong> — Use <code>salvar_agendamento</code>. O horario_fim = horario_inicio + 30 min.</li>
+          <li><strong>Encerrar</strong> — Envie os dados do agendamento e finalize cordialmente.</li>
+        </ol>
+
+        <h2>⚠️ Regras críticas</h2>
+        <div class="critical">NUNCA confirme horário fora do <code>range_horario</code> retornado pela tool.</div>
+        <div class="critical">NUNCA invente dados de paciente, horário ou local — use apenas o retorno das tools.</div>
+        <div class="critical">NUNCA pule etapas do fluxo.</div>
+        <p style="margin-top: 8px; color: var(--muted);">Sempre refira ao local usando <strong>"em"</strong> (nunca "na" ou "no").</p>
+
+        <h2>📤 Formato de resposta</h2>
+        <p>Responda sempre em JSON válido, sem texto fora do JSON. Divida em mensagens curtas.</p>
+        <pre style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#a8b8d8;margin-top:10px;overflow:auto">{
+  "mensagens": [
+    { "mensagem": "texto aqui" }
+  ]
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLS -->
+  <section id="tools">
+    <div class="section-label">06 · database tools</div>
+    <div class="section-title">Tools PostgreSQL</div>
+
+    <div class="callout">
+      <div class="callout-icon">🗄️</div>
+      <div>O agente possui acesso a <strong>4 tools</strong> conectadas ao PostgreSQL. Todas usam <code>$fromAI()</code> para que o agente injete os parâmetros corretos em cada chamada.</div>
+    </div>
+
+    <table class="tools-table">
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>Descrição & SQL</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td>
+            <div class="tool-name">buscar_paciente</div>
+          </td>
+          <td>
+            Busca o paciente pelo nome informado. Retorna <code>id</code> e <code>nome_paciente</code>. Sem resultado, o fluxo não avança.
+            <div class="sql-block"><span class="kw">SELECT</span> id, nome_paciente
+<span class="kw">FROM</span> paciente_dados_sensiveis
+<span class="kw">WHERE</span> nome_paciente <span class="fn">ILIKE</span> <span class="str">'%' || $fromAI("nome_paciente") || '%'</span>
+<span class="kw">LIMIT</span> 1;</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <div class="tool-name">busca_agendamento</div>
+          </td>
+          <td>
+            Verifica se o paciente já tem agendamento existente. Retorna o mais recente.
+            <div class="sql-block"><span class="kw">SELECT</span> a.id, a.horario_inicio, a.horario_fim, e.nome_estabelecimento
+<span class="kw">FROM</span> agendamento_criado a
+<span class="kw">JOIN</span> estabelecimento e <span class="kw">ON</span> e.id = a.id_estabelecimento
+<span class="kw">WHERE</span> e.id_paciente = <span class="str">$fromAI("id_paciente")</span>
+<span class="kw">ORDER BY</span> a.horario_inicio <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> 1;</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <div class="tool-name">buscar_horarios</div>
+          </td>
+          <td>
+            Retorna o estabelecimento e o <code>range_horario</code> vinculado ao paciente. O range define o intervalo permitido para agendamentos.
+            <div class="sql-block"><span class="kw">SELECT</span>
+  e.id <span class="kw">AS</span> id_estabelecimento,
+  e.nome_estabelecimento,
+  e.range_horario
+<span class="kw">FROM</span> estabelecimento e
+<span class="kw">WHERE</span> e.id_paciente = <span class="str">$fromAI("id_paciente")</span>;</div>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <div class="tool-name">salvar_agendamento</div>
+          </td>
+          <td>
+            Insere o agendamento confirmado. <strong>O horario_inicio deve estar dentro do range_horario.</strong> O horario_fim é calculado como horario_inicio + 30 min.
+            <div class="sql-block"><span class="kw">INSERT INTO</span> agendamento_criado
+  (id_paciente, id_estabelecimento, horario_inicio, horario_fim, created_at)
+<span class="kw">VALUES</span> (
+  <span class="str">$fromAI("id_paciente")</span>,
+  <span class="str">$fromAI("id_estabelecimento")</span>,
+  <span class="str">'$fromAI("horario_inicio")'</span>,  <span class="cmt">-- formato HH:MM:SS, dentro do range</span>
+  <span class="str">'$fromAI("horario_fim")'</span>,      <span class="cmt">-- horario_inicio + 30 min</span>
+  <span class="fn">NOW()</span>
+)
+<span class="kw">RETURNING</span> id, id_paciente, id_estabelecimento, horario_inicio, horario_fim;</div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SAÍDA -->
+  <section id="saida">
+    <div class="section-label">07 · output</div>
+    <div class="section-title">Saída para o Telegram</div>
+
+    <div class="flow-track">
+      <div class="flow-step">
+        <div class="step-icon">📜</div>
+        <div class="step-body">
+          <div class="step-title">Mensagens do Agente (Code)</div>
+          <div class="step-desc">Faz parse do JSON retornado pelo agente. Extrai o array <code>mensagens[]</code>. Em caso de erro de parse, encapsula o output bruto como uma mensagem única.</div>
+          <span class="step-tag green">code · js</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-icon">✂️</div>
+        <div class="step-body">
+          <div class="step-title">Separa Mensagens (SplitOut)</div>
+          <div class="step-desc">Divide o array <code>mensagens</code> em items individuais para envio sequencial.</div>
+          <span class="step-tag">splitOut · mensagens</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-icon">⏱️</div>
+        <div class="step-body">
+          <div class="step-title">Delay 1s</div>
+          <div class="step-desc">Aguarda 1 segundo entre cada mensagem para simular digitação natural e evitar flooding no Telegram.</div>
+          <span class="step-tag yellow">wait · 1s</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-icon">✉️</div>
+        <div class="step-body">
+          <div class="step-title">Envia Mensagens</div>
+          <div class="step-desc">Envia cada mensagem individualmente para o <code>chat.id</code> do paciente. Usa <code>$json.mensagem</code> como texto.</div>
+          <span class="step-tag green">telegram</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-icon">🚨</div>
+        <div class="step-body">
+          <div class="step-title">Mensagem de Erro</div>
+          <div class="step-desc">Conectado ao output de erro do nó <strong>Envia Mensagens</strong>. Notifica o paciente em caso de falha inesperada no envio.</div>
+          <span class="step-tag red">error handler</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VARIÁVEIS -->
+  <section id="variaveis">
+    <div class="section-label">08 · variables</div>
+    <div class="section-title">Variáveis do Workflow</div>
+    <div class="var-grid">
+      <div class="var-card">
+        <div class="var-name">mensagem_usuario</div>
+        <div class="var-val">string · Set: Padronização dos dados</div>
+        <div class="var-desc">Texto normalizado da mensagem — proveniente de transcrição (áudio) ou diretamente do Telegram (texto).</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">session_id</div>
+        <div class="var-val">string · message.chat.id</div>
+        <div class="var-desc">ID único da conversa no Telegram. Chave da memória do agente.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">origem</div>
+        <div class="var-val">"audio" | "texto"</div>
+        <div class="var-desc">Indica a origem da mensagem. Determinado por presença de <code>message.voice</code>.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">id_paciente</div>
+        <div class="var-val">integer · via $fromAI()</div>
+        <div class="var-desc">ID do paciente retornado pela tool <code>buscar_paciente</code>. Usado em todas as queries subsequentes.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">range_horario</div>
+        <div class="var-val">string · "HH:MM-HH:MM"</div>
+        <div class="var-desc">Intervalo de funcionamento do estabelecimento. Define os limites para sugestão e validação de horários.</div>
+      </div>
+      <div class="var-card">
+        <div class="var-name">id_estabelecimento</div>
+        <div class="var-val">integer · via buscar_horarios</div>
+        <div class="var-desc">ID do estabelecimento vinculado ao paciente. Necessário para salvar o agendamento.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Documentação gerada para o workflow <span>Isadora v8</span> · Sobrevidas · n8n
+</footer>
+
+</body>
+</html>
